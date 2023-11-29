@@ -7,18 +7,17 @@ var productSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    // vòng bạc- vong-bac(tao link dẫn)
+    // 
     slug: {
         type: String,
         required: true,
-        unique: true,
+        // unique: true,
         lowercase: true
     },
     description: {
-        type: String,
+        type: Array,
         required: true,
     },
-    //nhãn hiệu-nhà sx
     brand: {
         type: String,
         required: true
@@ -28,8 +27,8 @@ var productSchema = new mongoose.Schema({
         required: true
     },
     category: {
-        type: mongoose.Types.ObjectId,
-        ref: 'Category'
+        type: String,
+        required: true
     },
     quantity: {
         type: Number,
@@ -44,13 +43,14 @@ var productSchema = new mongoose.Schema({
     },
     color: {
         type: String,
-        enum: ['Black', 'Grown', 'Red']
+        require : true
     },
     ratings: [
         {
             star: { type: Number },
             postedBy: { type: mongoose.Types.ObjectId, ref: 'User' },
-            comment: { type: String }
+            comment: { type: String },
+            updatedAt: { type:Date, }
         }
     ],
     totalRatings: {

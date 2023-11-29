@@ -4,31 +4,71 @@ const { generateAccessToken, generateRefreshToken } = require('../middlewares/jw
 const jwt = require('jsonwebtoken')
 const sendMail = require('../ultils/sendMail')
 const crypto = require('crypto')
+const makeToken = require('uniqid')
+const {users} = require('../ultils/containt')
 
+// const register = asynHandler(async(req,res) =>{
+//     const { email, password, firstname, lastname } = req.body
+//     if (!email || !password || !lastname || !firstname)
+//         return res.status(400).json({
+//             success: false,
+//             mes: 'Thiếu đầu vào'
+//         })
+    // const user = await User.findOne({ email })
+    // if (user) throw new Error('Người dùng đã tồn tại')
+    // else {
+    //     const newUser = await User.create(req.body)
+    //     return res.status(200).json({
+    //         success: newUser ? true : false,
+    //         mes: newUser ? 'Đăng ký thành công. Vui lòng đăng nhập' : 'Đã xảy ra lỗi'
+    //     })
+    // }
+// })
 const register = asynHandler(async(req,res) =>{
     const { email, password, firstname, lastname } = req.body
     if (!email || !password || !lastname || !firstname)
         return res.status(400).json({
-            sucess: false,
+            success: false,
             mes: 'Thiếu đầu vào'
         })
     const user = await User.findOne({ email })
     if (user) throw new Error('Người dùng đã tồn tại')
     else {
-        const newUser = await User.create(req.body)
-        return res.status(200).json({
-            sucess: newUser ? true : false,
-            mes: newUser ? 'Đăng ký thành công. Vui lòng đăng nhập' : 'Đã xảy ra lỗi'
+        const token = makeToken()
+        res.cookie('dataregister',{...req.body,token},{httpOnly:true,maxAge:15*60*1000})
+        const html = `Xin vui lòng click vào link dưới đây để hoàn tất quá trình đăng ký mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_SERVER}/api/user/finalregister/${token}>Click here</a>`
+        await sendMail({email,html,subject:'Hoàn tất đăng ký Digital World'})
+        return res.json({
+            success: true,
+            mes: 'Please check your email to active account'
         })
     }
+    
 })
-// Refresh token => Cấp mới access token
-// Access token => Xác thực người dùng, phân quyên người dùng
+const finalRegister = asynHandler(async (req,res) => {
+    const cookie = req.cookies
+    const { token } = req.params
+    if(!cookie || cookie?.dataregister?.token !== token) {
+        res.clearCookie('dataregister')
+        return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`)
+    }
+    const newUser = await User.create({
+        email: cookie?.dataregister?.email,
+        password: cookie?.dataregister?.password,
+        mobile: cookie?.dataregister?.mobile,
+        firstname: cookie?.dataregister?.firstname,
+        lastname: cookie?.dataregister?.lastname,
+    })
+        res.clearCookie('dataregister')
+        if(newUser) return res.redirect(`${process.env.CLIENT_URL}/finalregister/success`)
+        else return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`)
+})
+
 const login = asynHandler(async (req, res) => {
     const { email, password } = req.body
     if (!email || !password)
         return res.status(400).json({
-            sucess: false,
+            success: false,
             mes: 'Thiếu đầu vào'
         })
     // plain object
@@ -45,7 +85,7 @@ const login = asynHandler(async (req, res) => {
         // Lưu refresh token vào cookie
         res.cookie('refreshToken', newRefreshToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 })
         return res.status(200).json({
-            sucess: true,
+            success: true,
             accessToken,
             userData
         })
@@ -55,7 +95,7 @@ const login = asynHandler(async (req, res) => {
 })
 const getCurrent = asynHandler(async (req, res) => {
     const { _id } = req.user
-    const user = await User.findById(_id).select('-refreshToken -password -role')
+    const user = await User.findById(_id).select('-refreshToken -password')
     return res.status(200).json({
         success: user ? true : false,
         rs: user ? user : 'Không tìm thấy người dùng'
@@ -90,31 +130,26 @@ const logout = asynHandler(async (req, res) => {
         mes: 'Đăng xuất xong'
     })
 })
-// Client gửi email
-// Server check email có hợp lệ hay không => Gửi mail + kèm theo link (password change token)
-// Client check mail => click link
-// Client gửi api kèm token
-// Check token có giống với token mà server gửi mail hay không
-// Change password
 
 const forgotPassword = asynHandler(async (req, res) => {
-    const { email } = req.query
+    const { email } = req.body
     if (!email) throw new Error('Missing email')
     const user = await User.findOne({ email })
     if (!user) throw new Error('User not found')
     const resetToken = user.createPasswordChangedToken()
     await user.save()
 
-    const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_SERVER}/api/user/reset-password/${resetToken}>Click here</a>`
+    const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.CLIENT_URL}/reset-password/${resetToken}>Click here</a>`
 
     const data = {
         email,
-        html
+        html,
+        subject: 'Forgot password'
     }
     const rs = await sendMail(data)
     return res.status(200).json({
         success: true,
-        rs
+        mes:'Hãy check mail của bạn'
     })
 })
 const resetPassword = asynHandler(async (req, res) => {
@@ -134,19 +169,70 @@ const resetPassword = asynHandler(async (req, res) => {
     })
 })
 const getUsers = asynHandler(async (req, res) => {
-    const response = await User.find().select('-refreshToken -password -role')
-    return res.status(200).json({
-        success: response ? true : false,
-        users: response
+    const queries = { ...req.query }
+    
+    const excludeFields = ['limit', 'sort', 'page', 'fields']
+    
+    excludeFields.forEach((el) => delete queries[el])
+
+    
+    let queryString = JSON.stringify(queries)
+    queryString = queryString.replace(/\b(gte|gt|lt|lte)\b/g, (matchEl) => '$' + matchEl)
+    const formatedQueries = JSON.parse(queryString)
+    if(req.query.q){
+        delete formatedQueries.q,
+        formatedQueries[`$or`] = [
+            {firstname :{ $regex: req.query.q, $options: 'i' }},
+            {lastname :{ $regex: req.query.q, $options: 'i' }},
+            {email :{ $regex: req.query.q, $options: 'i' }},
+        ]
+    }
+    
+
+    if (queries?.name) formatedQueries.name = { $regex: queries.name, $options: 'i' }
+    if(queries?.category) formatedQueries.category = { $regex: queries.category, $options: 'i' }
+    let queryCommand = User.find(formatedQueries);
+
+    if (req.query.sort) {
+        const sortBy = req.query.sort.split(',').join(' ')
+        queryCommand = queryCommand.sort(sortBy)
+    }
+    
+     if( req.query.fields){
+        const fields = req.query.fields.split(",").join(" ")
+        queryCommand=queryCommand.select(fields)
+     }
+     
+
+
+    const page = +req.query.page || 1
+    const limit = +req.query.limit || process.env.LIMIT_PRODUCTS 
+    const skip = (page - 1) * limit
+    queryCommand.skip(skip).limit(limit)
+
+
+    queryCommand.then(async (response) => {
+        const counts = await User.find(queries).countDocuments()
+        return res.status(200).json({
+            success: response ? true : false,
+            counts,
+            users: response ? response : 'Cannot get users',
+        })
+    })
+    .catch((err) => {
+        return res.status(500).json({
+            success: false,
+            error: err.message,
+          })
     })
 })
 const deleteUser = asynHandler(async (req, res) => {
-    const { _id } = req.query
-    if (!_id) throw new Error('Thiếu đầu vào')
-    const response = await User.findByIdAndDelete(_id)
+    const { uid } = req.params
+    
+    const response = await User.findByIdAndDelete(uid)
     return res.status(200).json({
         success: response ? true : false,
-        deletedUser: response ? `Người dùng có email ${response.email} đã xóa` : 'Không có người dùng nào xóa'
+        mes: response ? `User with email ${response.email} deleted` : 'No user delete'
     })
 })
 const updateUser = asynHandler(async (req, res) => {
@@ -166,10 +252,54 @@ const updateUserByAdmin = asynHandler(async (req, res) => {
     const response = await User.findByIdAndUpdate(uid, req.body, { new: true }).select('-password -role -refreshToken')
     return res.status(200).json({
         success: response ? true : false,
+        ms: response ? response : 'Đã xảy ra lỗi'
+    })
+})
+const updatedUserAddress = asynHandler(async(req,res) =>{
+    const { _id } = req.user
+    if(!req.body.address) throw new Error('Missing inputs')
+    const response = await User.findByIdAndUpdate(_id,{ $push: { address: req.body.address} },{ new: true})
+    return res.status(200).json({
+        success: response ? true : false,
         updatedUser: response ? response : 'Đã xảy ra lỗi'
     })
 })
+const updateCart = asynHandler(async (req, res) => {
+    const { _id } = req.user
+    const { pid,quantity,color} = req.body
+    if (!pid || !quantity || !color) throw new Error('Thiếu đầu vào')
+    const user = await User.findById(_id).select('cart')
+    const alreadyProduct = user?.cart?.find(el =>el.product.toString()=== pid)
+    if(alreadyProduct){
+        if(alreadyProduct.color === color){
+            const response = await updatOne({ cart: {$eleMatch: alreadyProduct}},{$set: {"cart.$.quantity":quantity}},{new:true})
+            return res.status(200).json({
+                success: response ? true : false,
+                updatedCart: response ? response : 'Đã xảy ra lỗi'
+            })
+        }else{
+            const response = await User.findByIdAndUpdate(_id,{ $push: { cart: {product:pid,quantity,color}}},{new:true})
+            return res.status(200).json({
+                success: response ? true : false,
+                updatedCart: response ? response : 'Đã xảy ra lỗi'
+            })
+        }
+    } else {
+        const response = await User.findByIdAndUpdate(_id,{ $push: { cart: {product:pid,quantity,color}}},{new:true})
+        return res.status(200).json({
+            success: response ? true : false,
+            updatedCart: response ? response : 'Đã xảy ra lỗi'
+        })
+    }   
+})
 
+const createUsers = asynHandler(async (req,res) =>{
+    const response = await User.create(users)
+    return res.status(200).json({
+        success: response ? true : false,
+        updatedCart: response ? response : 'Đã xảy ra lỗi'
+    })
+})
 module.exports = {
     register,
     login,
@@ -181,5 +311,9 @@ module.exports = {
     getUsers,
     deleteUser,
     updateUser,
-    updateUserByAdmin
+    updateUserByAdmin,
+    updatedUserAddress,
+    updateCart,
+    finalRegister,
+    createUsers
 }
