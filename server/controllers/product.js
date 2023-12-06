@@ -2,16 +2,18 @@ const { json, response, request } = require('express')
 const Product = require('../models/product')
 const asyncHandler = require('express-async-handler')
 const slugify = require('slugify')
+const makeSKU = require('uniqid')
 
 const createProduct = asyncHandler(async (req, res) => {
     const {title,price,description,brand,category,color} = req.body
-    const images = req.files
+    const images = req.files?.images?.map(el => el.path)
     if(!(title && price && description && brand && category && color)) throw new Error('Missing inputw')
     req.body.slug = slugify(title)
+    if(images) req.body.images = images
     const newProduct = await Product.create(req.body)
     return res.status(200).json({
         success: newProduct ? true : false,
-        createdProduct: newProduct ? newProduct : 'Không thể tạo mới sản phẩm'
+        mes: newProduct ? 'Created' : 'Fail.'
     })
 })
 const getProduct = asyncHandler(async (req, res) => {
@@ -50,8 +52,19 @@ const getProducts = asyncHandler(async (req, res) => {
         const colorQuery = colorArr.map(el => ({ color : {$regex:el, $options: 'i'}}))
         colorQueryObject = {$or : colorQuery}
     }
-    const q = {...colorQueryObject,...formatedQueries}
-    let queryCommand = Product.find(q);
+    let queryObject = {}
+    if(queries?.q){
+        delete formatedQueries.q
+        queryObject = {$or : [
+            { color : {$regex:queries.q, $options: 'i'}},
+            { title : {$regex:queries.q, $options: 'i'}},
+            { category : {$regex:queries.q, $options: 'i'}},
+            { brand : {$regex:queries.q, $options: 'i'}},
+            // { description : {$regex:queries.q, $options: 'i'}}
+        ]}
+    }
+    const qr = {...colorQueryObject,...formatedQueries,...queryObject}
+    let queryCommand = Product.find(qr);
     //sorting
     if (req.query.sort) {
         const sortBy = req.query.sort.split(',').join(' ')
@@ -70,7 +83,7 @@ const getProducts = asyncHandler(async (req, res) => {
     //execute query
 
     queryCommand.then(async (response) => {
-        const counts = await Product.find(q).countDocuments()
+        const counts = await Product.find(qr).countDocuments()
         return res.status(200).json({
             success: response ? true : false,
             counts,
@@ -86,11 +99,15 @@ const getProducts = asyncHandler(async (req, res) => {
 })
 const updateProduct = asyncHandler(async (req, res) => {
     const { pid } = req.params
+    const files = req?.files
+    if(files?.images){
+        req.body.images = files?.images?.map(el => el.path)
+    }
     if (req.body && req.body.title) req.body.slug = slugify(req.body.title)
     const updatedProduct = await Product.findByIdAndUpdate(pid, req.body, { new: true })
     return res.status(200).json({
         success: updatedProduct ? true : false,
-        updatedProduct: updatedProduct ? updatedProduct : 'Cannot update product'
+        mes: updatedProduct ? 'Updated.' : 'Cannot update product'
     })
 })
 const deleteProduct = asyncHandler(async (req, res) => {
@@ -98,7 +115,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
     const deletedProduct = await Product.findByIdAndDelete(pid)
     return res.status(200).json({
         success: deletedProduct ? true : false,
-        deletedProduct: deletedProduct ? deletedProduct : 'Cannot delete product'
+        mes: deletedProduct ? 'Deleted.' : 'Cannot delete product'
     })
 })
 const ratings = asyncHandler(async (req,res) => {
@@ -139,6 +156,17 @@ const uploadImagesProduct = asyncHandler (async (req,res) => {
         updatedProduct : response ? response : 'Cannot upload images product'
     })
 })
+const addVarriant = asyncHandler(async (req, res) => {
+    const { pid } = req.params
+    const {title,price,color} = req.body
+    const images = req.files?.images?.map(el => el.path)
+    if(!(title && price && color)) throw new Error('Missing inputw')
+    const response = await Product.findByIdAndUpdate(pid, { $push: {varriants: { color, price, title, images,sku: makeSKU().toUpperCase()} } },{new: true} )
+    return res.status(200).json({
+        success: response ? true : false,
+        mes: response ? 'Add varriant' : 'Cannot update product'
+    })
+})
 module.exports = {
     createProduct,
     getProduct,
@@ -146,5 +174,6 @@ module.exports = {
     updateProduct,
     deleteProduct,
     ratings,
-    uploadImagesProduct
+    uploadImagesProduct,
+    addVarriant
 }

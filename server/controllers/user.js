@@ -7,23 +7,7 @@ const crypto = require('crypto')
 const makeToken = require('uniqid')
 const {users} = require('../ultils/containt')
 
-// const register = asynHandler(async(req,res) =>{
-//     const { email, password, firstname, lastname } = req.body
-//     if (!email || !password || !lastname || !firstname)
-//         return res.status(400).json({
-//             success: false,
-//             mes: 'Thiếu đầu vào'
-//         })
-    // const user = await User.findOne({ email })
-    // if (user) throw new Error('Người dùng đã tồn tại')
-    // else {
-    //     const newUser = await User.create(req.body)
-    //     return res.status(200).json({
-    //         success: newUser ? true : false,
-    //         mes: newUser ? 'Đăng ký thành công. Vui lòng đăng nhập' : 'Đã xảy ra lỗi'
-    //     })
-    // }
-// })
+
 const register = asynHandler(async(req,res) =>{
     const { email, password, firstname, lastname } = req.body
     if (!email || !password || !lastname || !firstname)
@@ -74,15 +58,11 @@ const login = asynHandler(async (req, res) => {
     // plain object
     const response = await User.findOne({ email })
     if (response && await response.isCorrectPassword(password)) {
-        // Tách password và role ra khỏi response
+ 
         const { password, role, refreshToken, ...userData } = response.toObject()
-        // Tạo access token
         const accessToken = generateAccessToken(response._id, role)
-        // Tạo refresh token
         const newRefreshToken = generateRefreshToken(response._id)
-        // Lưu refresh token vào database
         await User.findByIdAndUpdate(response._id, { refreshToken: newRefreshToken }, { new: true })
-        // Lưu refresh token vào cookie
         res.cookie('refreshToken', newRefreshToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 })
         return res.status(200).json({
             success: true,
@@ -102,11 +82,8 @@ const getCurrent = asynHandler(async (req, res) => {
     })
 })
 const refreshAccessToken = asynHandler(async (req, res) => {
-    // Lấy token từ cookies
     const cookie = req.cookies
-    // Check xem có token hay không
     if (!cookie && !cookie.refreshToken) throw new Error('No refresh token in cookies')
-    // Check token có hợp lệ hay không
     const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET)
     const response = await User.findOne({ _id: rs._id, refreshToken: cookie.refreshToken })
     return res.status(200).json({
@@ -118,9 +95,7 @@ const refreshAccessToken = asynHandler(async (req, res) => {
 const logout = asynHandler(async (req, res) => {
     const cookie = req.cookies
     if (!cookie || !cookie.refreshToken) throw new Error('No refresh token in cookies')
-    // Xóa refresh token ở db
     await User.findOneAndUpdate({ refreshToken: cookie.refreshToken }, { refreshToken: '' }, { new: true })
-    // Xóa refresh token ở cookie trình duyệt
     res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: true
@@ -238,11 +213,15 @@ const deleteUser = asynHandler(async (req, res) => {
 const updateUser = asynHandler(async (req, res) => {
     // 
     const { _id } = req.user
+    const {firstname,lastname,email,mobile} = req.body
+    const data = {firstname,lastname,email,mobile}
+    if(req.file) data.avatar = req.file.path
+    
     if (!_id || Object.keys(req.body).length === 0) throw new Error('Thiếu đầu vào')
-    const response = await User.findByIdAndUpdate(_id, req.body, { new: true }).select('-password -role -refreshToken')
+    const response = await User.findByIdAndUpdate(_id,data, { new: true }).select('-password -role -refreshToken')
     return res.status(200).json({
         success: response ? true : false,
-        updatedUser: response ? response : 'Đã xảy ra lỗi'
+        mes: response ? 'Updated' : 'Đã xảy ra lỗi'
     })
 })
 const updateUserByAdmin = asynHandler(async (req, res) => {
