@@ -71,12 +71,12 @@ export const sorts = [
     {
         id: 2,
         value: '-title',
-        text: 'A->Z'
+        text: 'Z->A'
     },
     {
         id: 3,
         value: 'title',
-        text: 'Z->A'
+        text: 'A->Z'
     },
     {
         id: 4,
@@ -153,7 +153,37 @@ export const adminSlidebar = [
         icons: <RiBillLine size={20}/>
     },
 ]
-
+export const memberSlidebar = [
+    {
+        id:1,
+        type:'SINGLE',
+        text:'Personal',
+        path:`/${path.MEMBER}/${path.PERSONAL}`,
+        icons: <GrDashboard size={20}/>
+    },
+    {
+        id:2,
+        type:'SINGLE',
+        text:'My Cart',
+        path:`/${path.MEMBER}/${path.MY_CART}`,
+        icons: <MdOutlineGroups size={20} />
+    },
+    {
+        id:3,
+        type:'SINGLE',
+        text:'Buy histories',
+        path:`/${path.MEMBER}/${path.HISTORY}`,
+        icons: <TbBrandProducthunt size={20}/>,
+        
+    },
+    {
+        id:4,
+        type:'SINGLE',
+        text:'Wishlist',
+        path:`/${path.MEMBER}/${path.WISHLIST}`,
+        icons: <RiBillLine size={20}/>
+    },
+]
 export const roles = [
     {
         code:2001,
@@ -166,11 +196,11 @@ export const roles = [
 ]
 export const blockStatus = [
     {
-        code:1,
+        code:true,
         value: 'Blocked',
     },
     {
-        code:0,
+        code:false,
         value:'Active',
     }
 ]

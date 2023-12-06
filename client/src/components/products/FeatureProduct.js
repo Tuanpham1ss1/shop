@@ -5,7 +5,7 @@ import { apiGetProducts } from "apis";
 const FeatureProduct = () => {
     const [products,setProducts] = useState(null)
     const fetchProducts = async () => {
-        const respone = await apiGetProducts({limit:6,page: Math.round(Math.random()* 3)})
+        const respone = await apiGetProducts({limit:9,sort: '-totalRatings'})
         if(respone.success) setProducts(respone.products)
     }
     useEffect ( () =>{

@@ -1,23 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { InputForm ,Select,Button,MarkdownEditor} from 'components'
-import {  set, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { useSelector } from 'react-redux'
 import { validate,fileToBase64 } from 'ultils/helpers'
 import { toast } from 'react-toastify'
-import { IoTrashBinSharp } from "react-icons/io5";
 import { apiCreateProduct } from 'apis'
 
 const CreateProducts = () => {
   const {categories} = useSelector (state =>state.app)
   const {register,formState: {errors},reset,handleSubmit,watch} = useForm()
   const [ payload,setPayload]=useState({
-    descrition: ''
+    description: ''
   })
 
   const [preview,setPreview] = useState({
     images: []
   })
-  const [hoverElm,setHoverELm] = useState(null)
   const [invalidFields,setInvalidFields] = useState([])
   const changeValue = useCallback((e) => {
     setPayload(e)
@@ -30,32 +28,33 @@ const CreateProducts = () => {
           return
         }
         const base64 = await fileToBase64(file)
-        imagesPreview.push({name:file.name,path:base64})
+        imagesPreview.push({name: file.name,path :base64})
       }
       setPreview(prev =>({...prev,images:imagesPreview}))
   }
-useEffect(() => {
-  handlePreviewImages(watch('images'))
-},[watch('images')])
+  useEffect(() => {
+    handlePreviewImages(watch('images'))
+  },[watch('images')])
   const handleCreateProduct = async(data) => {
     const invalids = validate(payload,setInvalidFields)
     if(invalids===0){
       if(data.category) data.category = categories?.find(el => el._id === data.category)?.title
-      console.log({...data,...payload})
       const finalPayload = {...data,...payload}
       const formData = new FormData()
       for(let i of Object.entries(finalPayload)) formData.append(i[0],i[1])
-      const response =await apiCreateProduct(finalPayload)
-    console.log(response)
+      if(finalPayload.images){
+        for(let image of finalPayload.images) formData.append('images',image)
+      }
+      const response =await apiCreateProduct(formData)
+      if(response.success){
+        toast.success(response.mes)
+        reset()
+        setPayload({images: []})
+      }else toast.error(response.mes)
     } 
+
   }
-  const handleRemoveImage = (name) => {
-    const files = [...watch('images')]
-    reset({
-      images: files?.filter(el => el.name !== name)
-    })
-    if(preview.images?.some(el => el.name === name)) setPreview(prev => ({...prev,images:prev.images?.filter(el => el.name !== name)}))
-  }
+  
   return (
     <div className='w-full'>
       <h1 className='h-[75px] text-black flex justify-between items-center text-3xl font-bold px-4 border-b'>
@@ -137,11 +136,11 @@ useEffect(() => {
               />
             </div>
             <MarkdownEditor 
-            name='description'
-            changeValue={changeValue}
-            label='Description'
-            invalidFields={invalidFields}
-            setInvalidFields={setInvalidFields}
+              name='description'
+              changeValue={changeValue}
+              label='Description'
+              invalidFields={invalidFields}
+              setInvalidFields={setInvalidFields}
             />
             <div className='flex flex-col gap-2 mt-8'>
               <label htmlFor='products' className='font-semibold'>Upload image of product</label>
@@ -155,21 +154,16 @@ useEffect(() => {
             </div>
             {preview.images.length>0 && <div className='my-4 flex w-full gap-3 flex-wrap'>
                {preview.images?.map((el,indx) =>(
-                <div onMouseEnter={() =>setHoverELm(el.name)} 
+                <div  
                 key={indx} 
                 className='w-fit relative'
-                onMouseLeave={() =>setHoverELm(null)}
                 >
                   <img  src={el.path} alt='product' className='w-[200px] object-contain' />
-                  {/* {hoverElm === el.name && <div className='absolute inset-0 bg-overlay flex items-center justify-center cursor-pointer'
-                  onClick={() => handleRemoveImage(el.name)}
-                  > 
-                    <IoTrashBinSharp size={24} color='white'/>
-                    </div>} */}
                   </div>
                ))}
               </div>}
-            <div><Button  type='submit'>Create New Product</Button></div>
+
+            <div className='my-6'><Button type='submit'>Create New Product</Button></div>
         </form>
         </div>
     </div>

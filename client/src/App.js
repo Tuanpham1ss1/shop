@@ -3,7 +3,7 @@ import {Route, Routes} from 'react-router-dom'
 import {Login,Home,Public,Products,Services,DetailProduct,Blog,FAQ, FinalRegister,ResetPassword} from './pages/public'
 import path from './ultils/path';
 import { AdminLayout,ManageOrder,ManageProduct,CreateProducts,Dashboard, ManagaUser } from './pages/admin'
-import {MemberLayout,Personal} from './pages/member'
+import {MemberLayout,Personal,History,MyCart,Wishlist} from './pages/member'
 import  {getCategories } from './store/app/asuncActions'
 import  {useDispatch,useSelector } from 'react-redux'
 import { ToastContainer } from 'react-toastify';
@@ -39,6 +39,9 @@ function App() {
         </Route>
         <Route path={path.MEMBER} element={<MemberLayout/>}>
           <Route path={path.PERSONAL} element={<Personal />}/>
+          <Route path={path.MY_CART} element={<MyCart id ='cart' />}/>
+          <Route path={path.HISTORY} element={<History />}/>
+          <Route path={path.WISHLIST} element={<Wishlist />}/>
         </Route>
         <Route path={path.FINALREGISTER} element={<FinalRegister />}/>
         <Route path={path.LOGIN} element={<Login />} />

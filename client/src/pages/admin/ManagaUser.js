@@ -6,6 +6,7 @@ import { InputField ,InputForm,Paginations,Button, Select } from 'components'
 import  useDebounce  from 'hooks/useDebounce'
 import { useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import clsx from 'clsx'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
 
@@ -16,7 +17,7 @@ const ManagaUser = () => {
         lastname: '',
         role: '',
         phone : '',
-        status: ''
+        isBlocked: ''
     }) 
     const [users,setUsers] = useState(null)
     const [queries,setQueries] = useState({
@@ -47,12 +48,14 @@ const ManagaUser = () => {
     },[queries.q])
     const handelUpdate = async(data) => {
         const response = await apiUpdateUser(data,editElm._id)
+        console.log(response)
         if(response.success) {
             setEditElm(null)
             render()
             toast.success(response.mes)
         }else toast.error(response.mes)
-    }
+     }
+    
     const handlDelete = async (uid) => {
         Swal.fire({
             title:'Are you sure',
@@ -71,7 +74,7 @@ const ManagaUser = () => {
         
     }
   return (
-    <div className='w-full pl-8'>
+    <div className={clsx('w-full',editElm && 'pl-16')}>
       <h1 className='h-[75px] text-black flex justify-between items-center text-3xl font-bold px-4 border-b'>
         <span>Manage Users</span>
       </h1>
@@ -79,9 +82,9 @@ const ManagaUser = () => {
         <div className='text-black flex justify-end py-4'>
             <InputField 
             value={queries.q}
-            nameKey={`q`}
-            setValue={setValue}
-            style ='w500'
+            nameKey={'q'}
+            setValue={setQueries}
+            style ={'w500'}
             placeholder='search name or mail user...'
             isHideLabel
             />
@@ -115,7 +118,7 @@ const ManagaUser = () => {
                             id={'email'} 
                             validate={{
                                 required:'Require fill.',
-                                pattern: {
+                                pattern: { 
                                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                                     message: "invalid email address"
                                 }
@@ -167,7 +170,8 @@ const ManagaUser = () => {
                             }}
                                 />:<span>{el.mobile}</span>
                             }</td>
-                            <td className='py-2 px-4'>{editElm?._id === el._id ? <Select
+                            <td className='py-2 px-4'>{
+                                editElm?._id === el._id ? <Select
                                 register={register} 
                                 fullWidth 
                                 errors={errors} 

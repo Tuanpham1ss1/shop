@@ -4,9 +4,9 @@ import { HiDotsHorizontal } from "react-icons/hi";
 
 const usePaginations = (totalProductCount,currentPage,siblingCount = 1) => {
     const paginationArray = useMemo(() => {
-        const pageSize = process.env.REACT_APP_LIMIT || 6
-        const paginationCount = Math.ceil(totalProductCount / pageSize)
-        const totalPaginationItem = siblingCount + 5
+        const pageSize = +process.env.REACT_APP_LIMIT || 6
+        const paginationCount = Math.ceil(+totalProductCount / pageSize)
+        const totalPaginationItem = +siblingCount + 5
 
         if(paginationCount <= totalPaginationItem) return generatRange(1,paginationCount)
         

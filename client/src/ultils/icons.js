@@ -14,6 +14,9 @@ import { GrDashboard } from "react-icons/gr";
 import { MdOutlineGroups } from "react-icons/md";
 import { TbBrandProducthunt } from "react-icons/tb";
 import { RiBillLine } from "react-icons/ri";
+import { FaEdit } from "react-icons/fa";
+import { BiCustomize } from "react-icons/bi";
+import { RiDeleteBin2Line } from "react-icons/ri";
 
 const icons = {
     HiPhone,
@@ -32,7 +35,10 @@ const icons = {
     GrDashboard,
     MdOutlineGroups,
     TbBrandProducthunt,
-    RiBillLine
+    RiBillLine,
+    FaEdit,
+    BiCustomize,
+    RiDeleteBin2Line
 }
 
 export default icons
